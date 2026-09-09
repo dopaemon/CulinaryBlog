@@ -1,0 +1,19 @@
+{
+  "name": "culinary-blog",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@12.3.4",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev": "pnpm --parallel --filter \"./apps/*\" dev",
+    "dev:be": "pnpm --filter backend start:dev",
+    "dev:fe": "pnpm --filter frontend dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "db:generate": "pnpm --filter backend db:generate",
+    "db:migrate": "pnpm --filter backend db:migrate",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down"
+  }
+}

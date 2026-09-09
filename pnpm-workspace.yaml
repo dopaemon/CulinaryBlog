@@ -1,0 +1,13 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+allowBuilds:
+  '@parcel/watcher': true
+  '@scarf/scarf': true
+  '@tailwindcss/oxide': true
+  argon2: true
+  esbuild: true
+  msgpackr-extract: true
+  sharp: true
+  unrs-resolver: true
