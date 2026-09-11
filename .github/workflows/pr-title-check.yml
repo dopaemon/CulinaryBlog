@@ -15,15 +15,13 @@ jobs:
           script: |
             const title = context.payload.pull_request.title.trim();
 
-            // Format: Tên-MSSV: Mô tả
-            // Ví dụ: NguyenVanA-2112345: Fix bug giao diện
-            const regex = /^[a-zA-Z0-9]+-[0-9]+:\s+.+$/;
+            const regex = /^.+\s*-\s*[0-9]+:\s+.+$/u;
 
             if (!regex.test(title)) {
               core.setFailed(
                 `❌ PR Title không đúng định dạng!\n\n` +
                 `👉 Format bắt buộc: Tên-MSSV: Mô tả\n` +
-                `👉 Ví dụ: NguyenVanA-2112345: Thêm giao diện trang chủ`
+                `👉 Ví dụ: Nguyen Van A-2112345: Thêm giao diện trang chủ`
               );
             } else {
               console.log(`✅ PR Title hợp lệ: ${title}`);
