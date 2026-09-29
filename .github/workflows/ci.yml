@@ -33,7 +33,7 @@ jobs:
       - name: Typecheck (shared + backend + frontend)
         run: pnpm typecheck
 
-      - name: Test (jest)
+      - name: Test (backend jest + frontend vitest)
         run: pnpm test
 
       - name: Build (backend + frontend)
