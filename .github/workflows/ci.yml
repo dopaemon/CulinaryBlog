@@ -32,10 +32,6 @@ jobs:
             arch: arm64
             full: false
             docker: true
-          - os: macos-13
-            arch: amd64
-            full: false
-            docker: false
           - os: macos-latest
             arch: arm64
             full: false
