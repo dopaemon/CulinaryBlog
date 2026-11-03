@@ -56,12 +56,13 @@ describe('GoogleLoginHandler', () => {
 
     await build(db).execute(new GoogleLoginCommand('id-token'));
 
-    expect(db.values).toHaveBeenCalledWith({
+    expect(db.values).toHaveBeenCalledWith(expect.objectContaining({
       email: 'new@b.com',
+      username: expect.stringMatching(/^user_[a-f0-9]{24}$/),
       displayName: 'Tên',
       avatarUrl: 'p.jpg',
       role: 'Author',
-    });
+    }));
   });
 
   it('ném AUTH_GOOGLE_TOKEN_INVALID khi aud không khớp client id', async () => {

@@ -4,23 +4,23 @@ import { registerErrorMessage, validateRegister } from './helpers';
 
 describe('validateRegister', () => {
   it('không có lỗi khi input hợp lệ', () => {
-    expect(validateRegister('Hannah Fields', 'you@example.com', 'Abcdef1!')).toEqual({});
+    expect(validateRegister('Hannah Fields', 'you@example.com', 'Abcdef1!', 'hannah')).toEqual({});
   });
 
   it('báo lỗi displayName quá ngắn', () => {
-    expect(validateRegister('A', 'you@example.com', 'Abcdef1!').displayName).toBeDefined();
+    expect(validateRegister('A', 'you@example.com', 'Abcdef1!', 'hannah').displayName).toBeDefined();
   });
 
   it('báo lỗi email không hợp lệ', () => {
-    expect(validateRegister('Hannah Fields', 'not-an-email', 'Abcdef1!').email).toBeDefined();
+    expect(validateRegister('Hannah Fields', 'not-an-email', 'Abcdef1!', 'hannah').email).toBeDefined();
   });
 
   it('báo lỗi password thiếu ký tự đặc biệt', () => {
-    expect(validateRegister('Hannah Fields', 'you@example.com', 'Abcdef12').password).toBeDefined();
+    expect(validateRegister('Hannah Fields', 'you@example.com', 'Abcdef12', 'hannah').password).toBeDefined();
   });
 
   it('báo lỗi password ngắn hơn 8 ký tự', () => {
-    expect(validateRegister('Hannah Fields', 'you@example.com', 'Ab1!').password).toBeDefined();
+    expect(validateRegister('Hannah Fields', 'you@example.com', 'Ab1!', 'hannah').password).toBeDefined();
   });
 });
 

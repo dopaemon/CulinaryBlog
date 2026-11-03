@@ -131,6 +131,13 @@ export async function login(email: string, password: string): Promise<Session> {
   return establish(await post<TokenPair>('/auth/login', { email, password }));
 }
 
+export async function register(displayName: string, username: string, email: string, password: string): Promise<Session> {
+  const result = await post<AuthResponseDto>('/auth/register', { displayName, username, email, password });
+  const next = { accessToken: result.accessToken, refreshToken: result.refreshToken, user: normalizeProfile(result.user) };
+  setSession(next);
+  return next;
+}
+
 export async function loginWithGoogle(idToken: string): Promise<Session> {
   return establish(await post<TokenPair>('/auth/google', { idToken }));
 }

@@ -52,8 +52,8 @@ export class AuthController {
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  register(@Body() dto: RegisterDto): Promise<RegisterResult> {
-    return this.commandBus.execute(new RegisterCommand(dto.email, dto.password, dto.displayName));
+  register(@Body() dto: RegisterDto, @Ip() ip: string): Promise<RegisterResult> {
+    return this.commandBus.execute(new RegisterCommand(dto.email, dto.password, dto.displayName, dto.username, ip));
   }
 
   @Post('login')

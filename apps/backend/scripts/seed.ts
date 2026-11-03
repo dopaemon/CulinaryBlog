@@ -174,6 +174,7 @@ async function main(): Promise<void> {
     const added = await db.transaction(async (tx) => {
       await tx.insert(users).values({
         email: AUTHOR_EMAIL,
+        username: 'culinary_seed_author',
         displayName: AUTHOR_DISPLAY_NAME,
         role: 'Author',
       }).onConflictDoNothing({ target: users.email });

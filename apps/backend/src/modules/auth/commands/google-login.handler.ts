@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
@@ -52,6 +53,7 @@ export class GoogleLoginHandler implements ICommandHandler<GoogleLoginCommand, T
       .insert(users)
       .values({
         email: profile.email,
+        username: `user_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
         displayName: profile.name ?? profile.email.split('@')[0],
         avatarUrl: profile.picture ?? null,
         role: 'Author',

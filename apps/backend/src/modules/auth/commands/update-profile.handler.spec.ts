@@ -13,10 +13,12 @@ describe('UpdateProfileHandler', () => {
   const row = {
     id: 'user-1',
     email: 'a@b.com',
+    username: 'user_a',
     displayName: 'Tên mới',
     avatarUrl: 'https://cdn.test/a.png',
     bio: null,
     role: 'Author',
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
   };
 
   it('cập nhật đúng field được gửi và trả hồ sơ mới', async () => {
@@ -32,10 +34,12 @@ describe('UpdateProfileHandler', () => {
     expect(result).toEqual({
       id: 'user-1',
       email: 'a@b.com',
+      username: 'user_a',
       displayName: 'Tên mới',
       avatarUrl: 'https://cdn.test/a.png',
       bio: null,
       roles: ['Author'],
+      createdAt: '2026-01-01T00:00:00.000Z',
     });
     // bio không gửi thì không được ghi đè thành null.
     expect(Object.keys(db.set.mock.calls[0][0]).sort()).toEqual([
