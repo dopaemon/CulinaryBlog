@@ -8,6 +8,7 @@ import type {
   RecipeEditorIngredientDto,
   RecipeEditorStepDto,
   RecipeImageDto,
+  RecipeStatus,
 } from '@culinary/shared';
 import { CheckCircle2, Loader2, Save } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -230,6 +231,8 @@ export default function RecipeForm({ mode, recipeId: initialRecipeId }: RecipeFo
   const [images, setImages] = useState<UploadedImage[]>([]);
   const [recipeId, setRecipeId] = useState<string | null>(initialRecipeId ?? null);
   const [rowVersion, setRowVersion] = useState<number | null>(null);
+  const [recipeStatus, setRecipeStatus] = useState<RecipeStatus>('Draft');
+  const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(mode === 'edit');
   const [saving, setSaving] = useState(false);
   const [categoryError, setCategoryError] = useState<string | null>(null);
@@ -261,6 +264,7 @@ export default function RecipeForm({ mode, recipeId: initialRecipeId }: RecipeFo
         setImages(recipe.images.map(asUploadedImage));
         setRecipeId(recipe.id);
         setRowVersion(recipe.rowVersion);
+        setRecipeStatus(recipe.status);
       })
       .catch((requestError) => {
         if (!cancelled) setError(requestError instanceof Error ? requestError.message : 'Không thể tải công thức.');
@@ -274,6 +278,20 @@ export default function RecipeForm({ mode, recipeId: initialRecipeId }: RecipeFo
   const subtitle = mode === 'edit' ? 'Cập nhật công thức, nguyên liệu và cách làm.' : 'Lưu bản nháp trước, sau đó thêm ảnh cho công thức.';
   const childErrors = useMemo(() => Object.entries(fieldErrors).filter(([key]) => key.startsWith('ingredients.') || key.startsWith('steps.')), [fieldErrors]);
 
+  function advance() {
+    const errors = validate(values, ingredients, steps);
+    const relevant = Object.fromEntries(Object.entries(errors).filter(([key]) =>
+      step === 0 ? !key.startsWith('ingredients.') && !key.startsWith('steps.') : key.startsWith('ingredients.') || key.startsWith('steps.'),
+    ));
+    setFieldErrors(relevant);
+    if (Object.keys(relevant).length) {
+      setError('Vui lòng kiểm tra lại thông tin của bước này.');
+      return;
+    }
+    setError(null);
+    setStep((current) => Math.min(current + 1, 2));
+  }
+
   function updateValue<K extends keyof RecipeFormValues>(key: K, value: RecipeFormValues[K]) {
     setValues((current) => ({ ...current, [key]: value }));
     setFieldErrors((current) => { const next = { ...current }; delete next[key as string]; return next; });
@@ -285,7 +303,10 @@ export default function RecipeForm({ mode, recipeId: initialRecipeId }: RecipeFo
   }
 
   function handleRequestError(requestError: unknown, fallback: string) {
-    setFieldErrors(normalizeErrors(requestError));
+    const errors = normalizeErrors(requestError);
+    setFieldErrors(errors);
+    if (Object.keys(errors).some((key) => !key.startsWith('ingredients.') && !key.startsWith('steps.'))) setStep(0);
+    else if (Object.keys(errors).length) setStep(1);
     if (isConcurrencyConflict(requestError)) {
       setError('Công thức đã được cập nhật ở nơi khác. Dữ liệu bạn đang nhập vẫn được giữ nguyên; hãy kiểm tra rồi thử lưu lại.');
     } else {
@@ -352,6 +373,7 @@ export default function RecipeForm({ mode, recipeId: initialRecipeId }: RecipeFo
     setFieldErrors(errors);
     if (Object.keys(errors).length) {
       setError('Vui lòng kiểm tra lại các trường được đánh dấu.');
+      setStep(Object.keys(errors).some((key) => !key.startsWith('ingredients.') && !key.startsWith('steps.')) ? 0 : 1);
       return;
     }
     setSaving(true);
@@ -408,9 +430,15 @@ export default function RecipeForm({ mode, recipeId: initialRecipeId }: RecipeFo
     </header>
     {notice && <div className="mt-6 flex gap-2 rounded-xl border border-accent/30 bg-accent-soft px-4 py-3 text-sm text-accent" role="status"><CheckCircle2 className="h-4 w-4" />{notice}</div>}
     {error && <div className="mt-6 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive" role="alert">{error}</div>}
+    <nav className="mt-8 flex flex-wrap gap-2" aria-label="Các bước tạo công thức">
+      {['Thông tin', 'Nguyên liệu và cách làm', 'Ảnh và hoàn tất'].map((label, index) => (
+        <span key={label} aria-current={step === index ? 'step' : undefined} className={`rounded-full px-4 py-2 text-sm font-medium ${step === index ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>{index + 1}. {label}</span>
+      ))}
+    </nav>
     <form className="mt-8 space-y-8" onSubmit={submit}>
+      {step === 0 && <>
       <section className="rounded-2xl border border-border bg-card p-6 shadow-card sm:p-8" aria-labelledby="recipe-basic-title">
-        <div className="flex items-start justify-between gap-4"><div><h2 id="recipe-basic-title" className="font-display text-xl">Thông tin cơ bản</h2><p className="mt-1 text-sm text-muted-foreground">Các thông tin chính của công thức.</p></div><span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-secondary-foreground">Draft</span></div>
+        <div className="flex items-start justify-between gap-4"><div><h2 id="recipe-basic-title" className="font-display text-xl">Thông tin cơ bản</h2><p className="mt-1 text-sm text-muted-foreground">Các thông tin chính của công thức.</p></div><span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-secondary-foreground">{recipeStatus === 'Published' ? 'Đã xuất bản' : recipeStatus === 'Archived' ? 'Đã lưu trữ' : 'Bản nháp'}</span></div>
         <div className="mt-6 grid gap-5">
           <label><span className="mb-1.5 block text-sm font-medium">Tên công thức</span><input className="field" value={values.title} onChange={(event) => updateValue('title', event.target.value)} required minLength={5} maxLength={200} placeholder="Gà nướng sa tế" aria-invalid={Boolean(inputError(fieldErrors, 'title'))} />{inputError(fieldErrors, 'title') && <p className="mt-1 text-xs text-destructive">{inputError(fieldErrors, 'title')}</p>}</label>
           <label><span className="mb-1.5 block text-sm font-medium">Mô tả</span><textarea className="field resize-y" value={values.description} onChange={(event) => updateValue('description', event.target.value)} required maxLength={2000} rows={3} aria-invalid={Boolean(inputError(fieldErrors, 'description'))} />{inputError(fieldErrors, 'description') && <p className="mt-1 text-xs text-destructive">{inputError(fieldErrors, 'description')}</p>}</label>
@@ -429,13 +457,26 @@ export default function RecipeForm({ mode, recipeId: initialRecipeId }: RecipeFo
         <h2 id="nutrition-title" className="font-display text-xl">Dinh dưỡng <span className="font-sans text-sm font-normal text-muted-foreground">(không bắt buộc)</span></h2>
         <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{nutritionFields.map(({ key, label }) => <label key={key}><span className="mb-1.5 block text-sm font-medium">{label}</span><input className="field" type="number" min={0} step="0.01" value={values.nutrition[key]} onChange={(event) => updateNutrition(key, event.target.value)} aria-invalid={Boolean(inputError(fieldErrors, `nutrition.${key}`))} />{inputError(fieldErrors, `nutrition.${key}`) && <p className="mt-1 text-xs text-destructive">{inputError(fieldErrors, `nutrition.${key}`)}</p>}</label>)}</div>
       </section>
+      </>}
 
+      {step === 1 && <>
       <IngredientsField value={ingredients} onChange={setIngredients} disabled={saving} />
       <StepsField value={steps} onChange={setSteps} disabled={saving} />
       {childErrors.length > 0 && <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive" role="alert"><p className="font-semibold">Vui lòng kiểm tra nguyên liệu và các bước:</p><ul className="mt-1 list-disc pl-5">{childErrors.map(([key, messages]) => <li key={key}>{messages[0]}</li>)}</ul></div>}
+      </>}
 
+      {step === 2 && <>
+      <section className="rounded-2xl border border-border bg-card p-6 shadow-card sm:p-8">
+        <h2 className="font-display text-xl">Xem lại công thức</h2>
+        <p className="mt-2 text-sm text-muted-foreground">{values.title || 'Chưa có tên'} · {activeIngredients(ingredients).length} nguyên liệu · {activeSteps(steps).length} bước thực hiện</p>
+        <p className="mt-2 text-sm text-muted-foreground">{mode === 'create' && !isPersisted ? 'Lưu công thức trước khi tải ảnh lên.' : `Trạng thái hiện tại: ${recipeStatus}.`}</p>
+      </section>
       {isPersisted && recipeId ? <><ImageUploader recipeId={recipeId} value={images} onChange={setImages} disabled={saving} /><p className="text-sm text-muted-foreground">Ảnh đầu tiên được chọn làm ảnh chính; bạn có thể đổi hoặc xóa ảnh bất kỳ lúc nào.</p></> : <div className="rounded-2xl border border-dashed border-border bg-surface px-6 py-5 text-sm text-muted-foreground">Lưu bản nháp trước để tải ảnh lên công thức.</div>}
-      <div className="flex justify-end"><button type="submit" disabled={saving || Boolean(categoryError)} className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-60">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}{saving ? 'Đang lưu…' : 'Lưu bản nháp'}</button></div>
+      </>}
+      <div className="flex justify-between gap-3">
+        {step > 0 ? <button type="button" onClick={() => { setError(null); setStep(step - 1); }} className="rounded-full border border-border px-6 py-3 text-sm font-semibold">Quay lại</button> : <span />}
+        {step < 2 ? <button type="button" onClick={advance} disabled={Boolean(categoryError)} className="rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-60">Tiếp tục</button> : <button type="submit" disabled={saving || Boolean(categoryError)} className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-60">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}{saving ? 'Đang lưu…' : mode === 'create' && !isPersisted ? 'Lưu bản nháp' : 'Lưu thay đổi'}</button>}
+      </div>
     </form>
   </div>;
 }
