@@ -25,10 +25,10 @@ function renderNavbar(role: string) {
 
 describe('Navbar recipe dashboard link', () => {
   it.each(['Author', 'Admin'])('shows the dashboard link for %s', (role) => {
-    expect(renderNavbar(role)).toContain('Quản lý công thức');
+    expect(renderNavbar(role)).toContain('Tổng quan');
   });
 
   it('hides the dashboard link for Guest', () => {
-    expect(renderNavbar('Guest')).not.toContain('Quản lý công thức');
+    expect(renderNavbar('Guest')).not.toContain('Tổng quan');
   });
 });
