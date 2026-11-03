@@ -20,8 +20,8 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:seed": "tsx scripts/seed.ts",
-    "db:verify": "tsx scripts/seed.ts --verify-only"
+    "db:seed": "node --env-file=../../.env --import tsx scripts/seed.ts",
+    "db:verify": "node --env-file=../../.env --import tsx scripts/seed.ts --verify-only"
   },
   "jest": {
     "moduleFileExtensions": [

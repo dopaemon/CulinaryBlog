@@ -29,7 +29,7 @@ export class RecipeImageCleanupQueue implements OnModuleDestroy {
     if (job.objectKeys.length === 0) return;
 
     await this.queue.add('delete-recipe-images', job, {
-      attempts: 3,
+      attempts: 4,
       backoff: { type: 'exponential', delay: 1_000 },
       removeOnComplete: true,
       removeOnFail: false,

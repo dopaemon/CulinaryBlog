@@ -64,7 +64,7 @@ export default async function HomePage() {
       apiGetPaged<RecipeSummaryDto>(
         "/recipes",
         { pageSize: 6, sort: "-createdAt" },
-        { next: { revalidate } },
+        { cache: "no-store" },
       ),
       emptyPage,
     ),
@@ -73,7 +73,7 @@ export default async function HomePage() {
       apiGetPaged<RecipeSummaryDto>(
         "/recipes",
         { pageSize: 1, maxCookTime: 30 },
-        { next: { revalidate } },
+        { cache: "no-store" },
       ),
       emptyPage,
     ),

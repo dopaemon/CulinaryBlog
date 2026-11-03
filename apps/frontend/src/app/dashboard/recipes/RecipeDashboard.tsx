@@ -286,17 +286,15 @@ export function RecipeRow({
         {recipe.excerpt && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{recipe.excerpt}</p>}
         <div className="mt-4 flex flex-wrap gap-2">
           {availableActions.includes('publish') && (
-            <>
-              <ActionButton label="Xuất bản" primary disabled={busy} onClick={() => onAction('publish')}>
-                <Eye className="h-4 w-4" aria-hidden />
-              </ActionButton>
-              {availableActions.includes('edit') && (
-                <Link href={`/dashboard/recipes/${encodeURIComponent(recipe.id)}/edit`} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-secondary">
-                  <PenLine className="h-4 w-4" aria-hidden />
-                  Sửa
-                </Link>
-              )}
-            </>
+            <ActionButton label="Xuất bản" primary disabled={busy} onClick={() => onAction('publish')}>
+              <Eye className="h-4 w-4" aria-hidden />
+            </ActionButton>
+          )}
+          {availableActions.includes('edit') && (
+            <Link href={`/dashboard/recipes/${encodeURIComponent(recipe.id)}/edit`} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-secondary">
+              <PenLine className="h-4 w-4" aria-hidden />
+              Sửa
+            </Link>
           )}
           {availableActions.includes('unpublish') && (
             <>

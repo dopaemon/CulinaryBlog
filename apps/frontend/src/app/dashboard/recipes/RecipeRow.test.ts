@@ -57,24 +57,26 @@ describe('RecipeRow actions', () => {
     expect(html).not.toContain('Lưu trữ');
   });
 
-  it('Published có Unpublish và Archive', () => {
+  it('Published có Unpublish, Archive và Sửa', () => {
     const html = renderRecipeRow('Published');
 
     expect(html).toContain('Hủy xuất bản');
     expect(html).toContain('Lưu trữ');
+    expect(html).toContain(`href="/dashboard/recipes/${recipeId}/edit"`);
     expect(html).toContain('Xóa');
     expect(html).not.toContain('Xuất bản');
-    expect(html).not.toContain('Sửa');
+    expect(html).toContain('Sửa');
   });
 
-  it('Archived không có Publish/Unpublish/Archive nhưng vẫn xem và xóa được', () => {
+  it('Archived không có Publish/Unpublish/Archive nhưng vẫn sửa, xem và xóa được', () => {
     const html = renderRecipeRow('Archived');
 
     expect(html).toContain('Xem');
     expect(html).toContain('Xóa');
+    expect(html).toContain(`href="/dashboard/recipes/${recipeId}/edit"`);
     expect(html).not.toContain('Xuất bản');
     expect(html).not.toContain('Hủy xuất bản');
     expect(html).not.toContain('Lưu trữ');
-    expect(html).not.toContain('Sửa');
+    expect(html).toContain('Sửa');
   });
 });

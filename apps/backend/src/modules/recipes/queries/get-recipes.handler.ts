@@ -12,7 +12,6 @@ import {
   inArray,
   lte,
   or,
-  sql,
 } from 'drizzle-orm';
 import { CacheService } from '../../../infrastructure/cache/cache.service';
 import {
@@ -21,6 +20,7 @@ import {
 } from '../../../infrastructure/database/database.module';
 import {
   categories,
+  recipeImages,
   recipes,
   users,
 } from '../../../infrastructure/database/schema';
@@ -70,7 +70,6 @@ export class GetRecipesHandler implements IQueryHandler<
         title: recipes.title,
         slug: recipes.slug,
         excerpt: recipes.description,
-        coverImageUrl: sql<string | null>`null`,
         status: recipes.status,
         difficulty: recipes.difficulty,
         prepTimeMinutes: recipes.prepTime,
@@ -94,12 +93,42 @@ export class GetRecipesHandler implements IQueryHandler<
       .limit(params.pageSize)
       .offset((params.page - 1) * params.pageSize);
 
+    const coverImageUrls = new Map<string, string>();
+    if (rows.length > 0) {
+      const images = await this.db
+        .select({
+          recipeId: recipeImages.recipeId,
+          mediumUrl: recipeImages.mediumUrl,
+          originalUrl: recipeImages.originalUrl,
+        })
+        .from(recipeImages)
+        .where(
+          and(
+            inArray(recipeImages.recipeId, rows.map((row) => row.id)),
+            eq(recipeImages.isDeleted, false),
+          ),
+        )
+        .orderBy(
+          asc(recipeImages.recipeId),
+          desc(recipeImages.isPrimary),
+          asc(recipeImages.orderIndex),
+          asc(recipeImages.createdAt),
+          asc(recipeImages.id),
+        );
+
+      for (const image of images) {
+        if (!coverImageUrls.has(image.recipeId)) {
+          coverImageUrls.set(image.recipeId, image.mediumUrl ?? image.originalUrl);
+        }
+      }
+    }
+
     const items: RecipeSummaryDto[] = rows.map((row) => ({
       id: row.id,
       title: row.title,
       slug: row.slug,
       excerpt: row.excerpt,
-      coverImageUrl: row.coverImageUrl,
+      coverImageUrl: coverImageUrls.get(row.id) ?? null,
       status: row.status,
       difficulty: row.difficulty,
       prepTimeMinutes: row.prepTimeMinutes,

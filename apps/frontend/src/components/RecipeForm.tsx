@@ -8,6 +8,7 @@ import type {
   RecipeEditorIngredientDto,
   RecipeEditorStepDto,
   RecipeImageDto,
+  RecipeStatus,
 } from '@culinary/shared';
 import { CheckCircle2, Loader2, Save } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -229,6 +230,7 @@ export default function RecipeForm({ mode, recipeId: initialRecipeId }: RecipeFo
   const [initialSteps, setInitialSteps] = useState<StepFieldValue[]>([]);
   const [images, setImages] = useState<UploadedImage[]>([]);
   const [recipeId, setRecipeId] = useState<string | null>(initialRecipeId ?? null);
+  const [recipeStatus, setRecipeStatus] = useState<RecipeStatus>('Draft');
   const [rowVersion, setRowVersion] = useState<number | null>(null);
   const [loading, setLoading] = useState(mode === 'edit');
   const [saving, setSaving] = useState(false);
@@ -260,6 +262,7 @@ export default function RecipeForm({ mode, recipeId: initialRecipeId }: RecipeFo
         setInitialSteps(nextSteps);
         setImages(recipe.images.map(asUploadedImage));
         setRecipeId(recipe.id);
+        setRecipeStatus(recipe.status);
         setRowVersion(recipe.rowVersion);
       })
       .catch((requestError) => {
@@ -272,6 +275,8 @@ export default function RecipeForm({ mode, recipeId: initialRecipeId }: RecipeFo
   const isPersisted = Boolean(recipeId);
   const title = mode === 'edit' ? 'Chỉnh sửa công thức' : 'Tạo công thức';
   const subtitle = mode === 'edit' ? 'Cập nhật công thức, nguyên liệu và cách làm.' : 'Lưu bản nháp trước, sau đó thêm ảnh cho công thức.';
+  const statusLabel = recipeStatus === 'Published' ? 'Đã xuất bản' : recipeStatus === 'Archived' ? 'Đã lưu trữ' : 'Bản nháp';
+  const saveLabel = mode === 'create' && !isPersisted ? 'Lưu bản nháp' : 'Lưu thay đổi';
   const childErrors = useMemo(() => Object.entries(fieldErrors).filter(([key]) => key.startsWith('ingredients.') || key.startsWith('steps.')), [fieldErrors]);
 
   function updateValue<K extends keyof RecipeFormValues>(key: K, value: RecipeFormValues[K]) {
@@ -287,7 +292,7 @@ export default function RecipeForm({ mode, recipeId: initialRecipeId }: RecipeFo
   function handleRequestError(requestError: unknown, fallback: string) {
     setFieldErrors(normalizeErrors(requestError));
     if (isConcurrencyConflict(requestError)) {
-      setError('Công thức đã được cập nhật ở nơi khác. Dữ liệu bạn đang nhập vẫn được giữ nguyên; hãy kiểm tra rồi thử lưu lại.');
+      setError('Công thức đã được cập nhật ở nơi khác. Hãy sao chép nội dung bạn vừa nhập, tải lại trang để xem phiên bản mới rồi lưu lại.');
     } else {
       setError(requestError instanceof Error ? requestError.message : fallback);
     }
@@ -410,7 +415,7 @@ export default function RecipeForm({ mode, recipeId: initialRecipeId }: RecipeFo
     {error && <div className="mt-6 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive" role="alert">{error}</div>}
     <form className="mt-8 space-y-8" onSubmit={submit}>
       <section className="rounded-2xl border border-border bg-card p-6 shadow-card sm:p-8" aria-labelledby="recipe-basic-title">
-        <div className="flex items-start justify-between gap-4"><div><h2 id="recipe-basic-title" className="font-display text-xl">Thông tin cơ bản</h2><p className="mt-1 text-sm text-muted-foreground">Các thông tin chính của công thức.</p></div><span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-secondary-foreground">Draft</span></div>
+        <div className="flex items-start justify-between gap-4"><div><h2 id="recipe-basic-title" className="font-display text-xl">Thông tin cơ bản</h2><p className="mt-1 text-sm text-muted-foreground">Các thông tin chính của công thức.</p></div><span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-secondary-foreground">{statusLabel}</span></div>
         <div className="mt-6 grid gap-5">
           <label><span className="mb-1.5 block text-sm font-medium">Tên công thức</span><input className="field" value={values.title} onChange={(event) => updateValue('title', event.target.value)} required minLength={5} maxLength={200} placeholder="Gà nướng sa tế" aria-invalid={Boolean(inputError(fieldErrors, 'title'))} />{inputError(fieldErrors, 'title') && <p className="mt-1 text-xs text-destructive">{inputError(fieldErrors, 'title')}</p>}</label>
           <label><span className="mb-1.5 block text-sm font-medium">Mô tả</span><textarea className="field resize-y" value={values.description} onChange={(event) => updateValue('description', event.target.value)} required maxLength={2000} rows={3} aria-invalid={Boolean(inputError(fieldErrors, 'description'))} />{inputError(fieldErrors, 'description') && <p className="mt-1 text-xs text-destructive">{inputError(fieldErrors, 'description')}</p>}</label>
@@ -435,7 +440,7 @@ export default function RecipeForm({ mode, recipeId: initialRecipeId }: RecipeFo
       {childErrors.length > 0 && <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive" role="alert"><p className="font-semibold">Vui lòng kiểm tra nguyên liệu và các bước:</p><ul className="mt-1 list-disc pl-5">{childErrors.map(([key, messages]) => <li key={key}>{messages[0]}</li>)}</ul></div>}
 
       {isPersisted && recipeId ? <><ImageUploader recipeId={recipeId} value={images} onChange={setImages} disabled={saving} /><p className="text-sm text-muted-foreground">Ảnh đầu tiên được chọn làm ảnh chính; bạn có thể đổi hoặc xóa ảnh bất kỳ lúc nào.</p></> : <div className="rounded-2xl border border-dashed border-border bg-surface px-6 py-5 text-sm text-muted-foreground">Lưu bản nháp trước để tải ảnh lên công thức.</div>}
-      <div className="flex justify-end"><button type="submit" disabled={saving || Boolean(categoryError)} className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-60">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}{saving ? 'Đang lưu…' : 'Lưu bản nháp'}</button></div>
+      <div className="flex justify-end"><button type="submit" disabled={saving || Boolean(categoryError) || (mode === 'edit' && rowVersion === null)} className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-60">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}{saving ? 'Đang lưu…' : saveLabel}</button></div>
     </form>
   </div>;
 }

@@ -10,6 +10,7 @@ import { RecipeCard } from "@/components/RecipeCard";
 import { Pagination } from "@/components/Pagination";
 import { apiGet, apiGetPaged } from "@/lib/api";
 import { RecipesLoading } from "./loading";
+import { buildRecipesHref, DEFAULT_SORT, parseRecipeListQuery, type RecipeListQuery } from "./recipe-list-query";
 
 export const metadata: Metadata = {
   title: "Tất cả công thức",
@@ -34,59 +35,14 @@ export const metadata: Metadata = {
 };
 
 const PAGE_SIZE = 12;
-const DEFAULT_SORT = "-createdAt";
-const SORT_VALUES = [
-  "-createdAt",
-  "createdAt",
-  "title",
-  "-title",
-  "cookTime",
-  "-cookTime",
-] as const;
-
-type SortValue = (typeof SORT_VALUES)[number];
 type SearchParams = Record<string, string | string[] | undefined>;
 
 interface RecipesPageProps {
   searchParams: Promise<SearchParams>;
 }
 
-interface RecipeListQuery {
-  page: number;
-  categoryId?: string;
-  sort: SortValue;
-}
-
-function firstValue(value: string | string[] | undefined): string | undefined {
-  return Array.isArray(value) ? value[0] : value;
-}
-
-function normalizePage(value: string | undefined): number {
-  const page = Number(value);
-  return Number.isInteger(page) && page > 0 ? page : 1;
-}
-
-function normalizeSort(value: string | undefined): SortValue {
-  return SORT_VALUES.includes(value as SortValue) ? (value as SortValue) : DEFAULT_SORT;
-}
-
-function buildRecipesHref(query: RecipeListQuery, page: number): string {
-  const params = new URLSearchParams();
-  if (page > 1) params.set("page", String(page));
-  if (query.categoryId) params.set("categoryId", query.categoryId);
-  if (query.sort !== DEFAULT_SORT) params.set("sort", query.sort);
-  const search = params.toString();
-  return search ? `/recipes?${search}` : "/recipes";
-}
-
 export default async function RecipesPage({ searchParams }: RecipesPageProps) {
-  const params = await searchParams;
-  const categoryId = firstValue(params.categoryId)?.trim() || undefined;
-  const query: RecipeListQuery = {
-    page: normalizePage(firstValue(params.page)),
-    categoryId,
-    sort: normalizeSort(firstValue(params.sort)),
-  };
+  const query = parseRecipeListQuery(await searchParams);
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
@@ -101,7 +57,7 @@ export default async function RecipesPage({ searchParams }: RecipesPageProps) {
         </p>
       </header>
 
-      <Suspense key={`${query.page}-${query.categoryId ?? "all"}-${query.sort}`} fallback={<RecipesLoading />}>
+      <Suspense key={`${query.page}-${query.categoryId ?? "all"}-${query.difficulty ?? "all"}-${query.maxCookTime ?? "all"}-${query.sort}`} fallback={<RecipesLoading />}>
         <RecipeList query={query} />
       </Suspense>
     </main>
@@ -113,7 +69,7 @@ async function RecipeList({ query }: { query: RecipeListQuery }) {
   if ("error" in result) return <RecipesError error={result.error} />;
 
   const { categories, recipes } = result;
-  const hasFilters = Boolean(query.categoryId) || query.sort !== DEFAULT_SORT;
+  const hasFilters = Boolean(query.categoryId || query.difficulty) || query.maxCookTime !== undefined || query.sort !== DEFAULT_SORT;
 
   return (
     <>
@@ -149,7 +105,7 @@ async function RecipeList({ query }: { query: RecipeListQuery }) {
           <p className="font-display text-2xl">Chưa tìm thấy công thức phù hợp</p>
           <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
             {hasFilters
-              ? "Hãy thử một danh mục hoặc cách sắp xếp khác."
+              ? "Hãy thử thay đổi bộ lọc hoặc cách sắp xếp."
               : "Chưa có công thức nào được đăng. Hãy quay lại sau nhé."}
           </p>
           {hasFilters && (
@@ -177,6 +133,8 @@ async function loadRecipeList(query: RecipeListQuery) {
           page: query.page,
           pageSize: PAGE_SIZE,
           categoryId: query.categoryId,
+          difficulty: query.difficulty,
+          maxCookTime: query.maxCookTime,
           sort: query.sort,
         },
         { cache: "no-store" },
@@ -201,7 +159,7 @@ function RecipeFilters({
   return (
     <form
       action="/recipes"
-      className="mt-8 grid gap-3 rounded-2xl border border-border bg-card p-4 shadow-card sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto] lg:items-end"
+      className="mt-8 grid gap-3 rounded-2xl border border-border bg-card p-4 shadow-card sm:grid-cols-2 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto_auto] lg:items-end"
     >
       <label className="grid gap-2 text-sm font-medium" htmlFor="recipe-category">
         Danh mục
@@ -218,6 +176,30 @@ function RecipeFilters({
             </option>
           ))}
         </select>
+      </label>
+
+      <label className="grid gap-2 text-sm font-medium" htmlFor="recipe-difficulty">
+        Độ khó
+        <select id="recipe-difficulty" name="difficulty" defaultValue={query.difficulty ?? ""} className="field">
+          <option value="">Tất cả độ khó</option>
+          <option value="Easy">Dễ</option>
+          <option value="Medium">Trung bình</option>
+          <option value="Hard">Khó</option>
+        </select>
+      </label>
+
+      <label className="grid gap-2 text-sm font-medium" htmlFor="recipe-max-cook-time">
+        Nấu tối đa (phút)
+        <input
+          id="recipe-max-cook-time"
+          name="maxCookTime"
+          type="number"
+          min={1}
+          step={1}
+          defaultValue={query.maxCookTime ?? ""}
+          placeholder="Không giới hạn"
+          className="field"
+        />
       </label>
 
       <label className="grid gap-2 text-sm font-medium" htmlFor="recipe-sort">

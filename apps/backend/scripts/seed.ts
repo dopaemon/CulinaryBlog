@@ -8,6 +8,8 @@ import {
   recipeSteps,
   users,
 } from '../src/infrastructure/database/schema';
+import { seedRecipeImages } from './seed-recipe-images';
+import { SAMPLE_RECIPES } from './recipe-sample-catalog';
 
 const AUTHOR_EMAIL = 'lab2.seed.author@example.invalid';
 const AUTHOR_DISPLAY_NAME = 'Sample Author';
@@ -16,12 +18,6 @@ const CATEGORY_NAMES = [
   'Món hấp', 'Món xào', 'Món chiên', 'Món kho', 'Món canh',
   'Món súp', 'Món cơm', 'Món mì', 'Món bún', 'Món bánh',
   'Món tráng miệng', 'Món ăn sáng', 'Món ăn nhẹ', 'Món gia đình', 'Món ngày lễ',
-] as const;
-const DISHES = [
-  'Cơm gà', 'Bún bò', 'Mì rau củ', 'Đậu hũ sốt', 'Cá nướng',
-  'Gà hấp', 'Thịt xào', 'Tôm chiên', 'Cá kho', 'Canh bí',
-  'Súp nấm', 'Cơm rang', 'Mì xào', 'Bún thịt', 'Bánh khoai',
-  'Chè đậu', 'Bánh mì trứng', 'Gỏi cuốn', 'Lẩu rau', 'Xôi gấc',
 ] as const;
 const INGREDIENTS = [
   'thịt gà', 'thịt bò', 'thịt heo', 'cá', 'tôm', 'đậu hũ', 'trứng',
@@ -37,6 +33,32 @@ const STEP_TITLES = [
 
 function categorySlug(index: number): string {
   return `category-${String(index + 1).padStart(2, '0')}`;
+}
+
+function sampleCategoryIndex(title: string): number {
+  const normalized = title
+    .toLocaleLowerCase('vi')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đ]/g, 'd');
+
+  if (/^(che |sua chua |banh flan|tiramisu)/.test(normalized)) return 15;
+  if (/(pizza|lasagna|mi y)/.test(normalized)) return 2;
+  if (/(sushi|kimchi|bibimbap|gyoza|pad thai|katsu)/.test(normalized)) return 1;
+  if (normalized.startsWith('canh ')) return 9;
+  if (normalized.startsWith('sup ')) return 10;
+  if (normalized.startsWith('lau ')) return 18;
+  if (normalized.startsWith('bun ') || normalized.startsWith('pho ') || normalized.startsWith('hu tieu ')) return 13;
+  if (normalized.startsWith('mi ') || normalized.startsWith('mien ') || normalized.startsWith('cao lau')) return 12;
+  if (normalized.startsWith('com ') || normalized.startsWith('xoi ') || normalized.startsWith('chao ')) return 11;
+  if (normalized.startsWith('banh ')) return 14;
+  if (normalized.startsWith('goi ') || normalized.startsWith('nom ')) return 17;
+  if (/(nuong|nem lui)/.test(normalized)) return 4;
+  if (/(hap|banh beo|banh nam)/.test(normalized)) return 5;
+  if (/(xao|rang)/.test(normalized)) return 6;
+  if (/(chien|banh khot)/.test(normalized)) return 7;
+  if (/(kho|rim|om)/.test(normalized)) return 8;
+  return 18;
 }
 
 function legacyCategorySlug(index: number): string {
@@ -63,7 +85,7 @@ class SeedDataFactory {
       const target = Math.floor(random() * (position + 1));
       [shuffled[position], shuffled[target]] = [shuffled[target], shuffled[position]];
     }
-    const title = DISHES[index % DISHES.length];
+    const title = SAMPLE_RECIPES[index % SAMPLE_RECIPES.length].title;
     const ingredients = shuffled.slice(0, ingredientCount).map((name, orderIndex) => ({
       name,
       quantity: String(1 + Math.floor(random() * 5)),
@@ -80,7 +102,7 @@ class SeedDataFactory {
     return {
       slug: `lab2-recipe-${String(index + 1).padStart(3, '0')}`,
       title,
-      description: `Công thức mẫu ${title.toLowerCase()} thuộc ${CATEGORY_NAMES[index % CATEGORY_NAMES.length]}.`,
+      description: `Công thức mẫu ${title.toLowerCase()} thuộc ${CATEGORY_NAMES[sampleCategoryIndex(title)]}.`,
       instructions: steps.map((step) => `${step.stepNumber}. ${step.description}`).join('\n'),
       prepTime: 10 + Math.floor(random() * 21),
       cookTime: 15 + Math.floor(random() * 46),
@@ -97,12 +119,24 @@ async function verify(pool: Pool): Promise<void> {
     category_count: string;
     recipe_count: string;
     seeded_recipe_count: string;
+    unique_seeded_title_count: string;
+    seeded_recipe_image_count: string;
+    unique_seeded_image_count: string;
     incomplete_recipe_count: string;
   }>(`
     SELECT
       (SELECT COUNT(*) FROM categories WHERE NOT is_deleted) AS category_count,
       (SELECT COUNT(*) FROM recipes WHERE NOT is_deleted) AS recipe_count,
       (SELECT COUNT(*) FROM recipes WHERE NOT is_deleted AND LEFT(slug, 12) = 'lab2-recipe-') AS seeded_recipe_count,
+      (SELECT COUNT(DISTINCT title) FROM recipes WHERE NOT is_deleted AND LEFT(slug, 12) = 'lab2-recipe-') AS unique_seeded_title_count,
+      (SELECT COUNT(DISTINCT r.id) FROM recipes r
+        INNER JOIN recipe_images ri ON ri.recipe_id = r.id AND NOT ri.is_deleted AND ri.is_primary
+        WHERE NOT r.is_deleted AND LEFT(r.slug, 12) = 'lab2-recipe-'
+      ) AS seeded_recipe_image_count,
+      (SELECT COUNT(DISTINCT ri.object_key) FROM recipes r
+        INNER JOIN recipe_images ri ON ri.recipe_id = r.id AND NOT ri.is_deleted AND ri.is_primary
+        WHERE NOT r.is_deleted AND LEFT(r.slug, 12) = 'lab2-recipe-'
+      ) AS unique_seeded_image_count,
       (SELECT COUNT(*) FROM recipes r
         LEFT JOIN (SELECT recipe_id, COUNT(*) AS n FROM recipe_ingredients WHERE NOT is_deleted GROUP BY recipe_id) i ON i.recipe_id = r.id
         LEFT JOIN (SELECT recipe_id, COUNT(*) AS n FROM recipe_steps WHERE NOT is_deleted GROUP BY recipe_id) s ON s.recipe_id = r.id
@@ -110,11 +144,14 @@ async function verify(pool: Pool): Promise<void> {
       ) AS incomplete_recipe_count
   `);
   const result = counts.rows[0];
-  console.log(`Categories: ${result.category_count}; recipes: ${result.recipe_count}; lab 2 recipes: ${result.seeded_recipe_count}; recipes with fewer than 10 ingredients or 5 steps: ${result.incomplete_recipe_count}`);
+  console.log(`Categories: ${result.category_count}; recipes: ${result.recipe_count}; lab 2 recipes: ${result.seeded_recipe_count}; unique sample titles: ${result.unique_seeded_title_count}; recipes with a primary sample image: ${result.seeded_recipe_image_count}; unique sample images: ${result.unique_seeded_image_count}; recipes with fewer than 10 ingredients or 5 steps: ${result.incomplete_recipe_count}`);
   if (
     Number(result.category_count) < 20 ||
     Number(result.recipe_count) < 100 ||
     Number(result.seeded_recipe_count) < 100 ||
+    Number(result.unique_seeded_title_count) !== SAMPLE_RECIPES.length ||
+    Number(result.seeded_recipe_image_count) !== SAMPLE_RECIPES.length ||
+    Number(result.unique_seeded_image_count) !== SAMPLE_RECIPES.length ||
     Number(result.incomplete_recipe_count) > 0
   ) {
     throw new Error('Database does not meet the lab 2 data requirements.');
@@ -133,7 +170,7 @@ async function main(): Promise<void> {
       return;
     }
 
-    const slugs = Array.from({ length: 100 }, (_, index) => SeedDataFactory.recipe(index).slug);
+    const slugs = Array.from({ length: SAMPLE_RECIPES.length }, (_, index) => SeedDataFactory.recipe(index).slug);
     const added = await db.transaction(async (tx) => {
       await tx.insert(users).values({
         email: AUTHOR_EMAIL,
@@ -175,9 +212,9 @@ async function main(): Promise<void> {
       const existingRecipes = new Map(existing.map(({ slug, id }) => [slug, id]));
       let inserted = 0;
 
-      for (let index = 0; index < 100; index++) {
+      for (let index = 0; index < SAMPLE_RECIPES.length; index++) {
         const data = SeedDataFactory.recipe(index);
-        const categoryId = categoryIds.get(categorySlug(index % CATEGORY_NAMES.length));
+        const categoryId = categoryIds.get(categorySlug(sampleCategoryIndex(data.title)));
         if (!categoryId) throw new Error(`Missing category for ${data.slug}.`);
         const existingRecipeId = existingRecipes.get(data.slug);
         if (existingRecipeId) {
@@ -236,6 +273,7 @@ async function main(): Promise<void> {
       return inserted;
     });
     console.log(`Inserted ${added} recipes; existing seed display data was synchronized.`);
+    await seedRecipeImages(pool);
     await verify(pool);
   } finally {
     await pool.end();
