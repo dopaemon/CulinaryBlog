@@ -46,6 +46,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1127.0",
+    "@autotelic/pino-seq-transport": "^0.1.0",
     "@culinary/shared": "workspace:*",
     "@nestjs/common": "^11.2.3",
     "@nestjs/config": "^4.0.4",
