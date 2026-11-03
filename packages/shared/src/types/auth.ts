@@ -3,6 +3,7 @@ export type UserRole = 'Author' | 'Admin';
 export interface UserProfileDto {
   id: string;
   email: string;
+  username: string;
   displayName: string;
   avatarUrl: string | null;
   bio: string | null;
@@ -52,6 +53,7 @@ export interface LoginRequest {
 
 export interface RegisterRequest {
   email: string;
+  username: string;
   password: string;
   displayName: string;
 }

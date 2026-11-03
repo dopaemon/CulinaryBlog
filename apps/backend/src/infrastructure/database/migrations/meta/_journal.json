@@ -64,6 +64,13 @@
       "when": 1792773855912,
       "tag": "0008_glamorous_justice",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793672965060,
+      "tag": "0009_skinny_manta",
+      "breakpoints": true
     }
   ]
 }

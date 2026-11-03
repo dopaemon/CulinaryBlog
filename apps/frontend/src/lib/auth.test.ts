@@ -18,7 +18,7 @@ vi.stubGlobal('localStorage', localStorageStub);
 
 const { apiAuthed, apiAuthedPaged, changePassword, getSession, login, logout, refresh, requestPasswordReset, resetPassword, setSession } = await import('./auth');
 
-const user = { id: 'u1', email: 'a@b.c', displayName: 'A', avatarUrl: null, bio: null, role: 'Author' as const, createdAt: '' };
+const user = { id: 'u1', email: 'a@b.c', username: 'user_a', displayName: 'A', avatarUrl: null, bio: null, role: 'Author' as const, createdAt: '' };
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {

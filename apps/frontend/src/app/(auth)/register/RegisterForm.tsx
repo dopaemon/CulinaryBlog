@@ -4,11 +4,13 @@ import { ChefHat, Lock, Mail, User } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { registerErrorMessage, registerUser, validateRegister, type RegisterFieldErrors } from './helpers';
+import { register } from '@/lib/auth';
+import { registerErrorMessage, validateRegister, type RegisterFieldErrors } from './helpers';
 
 export function RegisterForm() {
   const router = useRouter();
   const [displayName, setDisplayName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fieldErrors, setFieldErrors] = useState<RegisterFieldErrors>({});
@@ -31,14 +33,14 @@ export function RegisterForm() {
           onSubmit={async (e) => {
             e.preventDefault();
             setError(null);
-            const errors = validateRegister(displayName, email, password);
+            const errors = validateRegister(displayName, email, password, username);
             setFieldErrors(errors);
             if (Object.keys(errors).length > 0) return;
 
             setSubmitting(true);
             try {
-              await registerUser(displayName.trim(), email, password);
-              router.push('/login');
+              await register(displayName.trim(), username, email, password);
+              router.push('/profile');
             } catch (err) {
               const { field, message } = registerErrorMessage(err);
               if (field) setFieldErrors((prev) => ({ ...prev, [field]: message }));
@@ -62,6 +64,14 @@ export function RegisterForm() {
               />
             </div>
             {fieldErrors.displayName && <p className="mt-1 text-sm text-destructive">{fieldErrors.displayName}</p>}
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-medium">Tên đăng nhập</span>
+            <div className="relative">
+              <User className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input required autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value.toLowerCase())} className="field py-3 pl-10" placeholder="ten_dang_nhap" />
+            </div>
+            {fieldErrors.username && <p className="mt-1 text-sm text-destructive">{fieldErrors.username}</p>}
           </label>
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium">Email</span>
