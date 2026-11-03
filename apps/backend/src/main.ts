@@ -1,16 +1,21 @@
 import './tracing';
 import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { corsOrigins } from './common/cors-origins';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+import { enableCqrsLogging } from './infrastructure/logging/cqrs-logging';
+import { requestContext } from './infrastructure/logging/request-context';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  app.use(requestContext);
   app.useLogger(app.get(Logger));
+  enableCqrsLogging(app.get(CommandBus), app.get(QueryBus), app.get(Logger));
   app.setGlobalPrefix('api/v1');
   // Production đi qua Nginx nên frontend và API cùng origin; CORS chỉ cần cho dev
   // (frontend :3000 gọi thẳng backend :5000). Không bật credentials vì refresh

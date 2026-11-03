@@ -12,7 +12,6 @@ describe('SearchRecipesHandler', () => {
     title: 'Phở bò',
     slug: 'pho-bo',
     excerpt: 'Nước dùng trong và thơm',
-    coverImageUrl: null,
     status: 'Published' as const,
     difficulty: 'Medium' as const,
     prepTimeMinutes: 30,
@@ -29,7 +28,11 @@ describe('SearchRecipesHandler', () => {
     relevanceScore: 0.9,
   };
 
-  function buildDb(totalCount = 1, rows = [row]) {
+  function buildDb(
+    totalCount = 1,
+    rows = [row],
+    images: { recipeId: string; mediumUrl: string | null; originalUrl: string }[] = [],
+  ) {
     const countWhere = jest.fn().mockResolvedValue([{ totalCount }]);
     const countFrom = jest.fn().mockReturnValue({ where: countWhere });
 
@@ -40,10 +43,14 @@ describe('SearchRecipesHandler', () => {
     const secondJoin = jest.fn().mockReturnValue({ where: dataWhere });
     const firstJoin = jest.fn().mockReturnValue({ innerJoin: secondJoin });
     const dataFrom = jest.fn().mockReturnValue({ innerJoin: firstJoin });
+    const imageOrderBy = jest.fn().mockResolvedValue(images);
+    const imageWhere = jest.fn().mockReturnValue({ orderBy: imageOrderBy });
+    const imageFrom = jest.fn().mockReturnValue({ where: imageWhere });
     const select = jest
       .fn()
       .mockReturnValueOnce({ from: countFrom })
-      .mockReturnValueOnce({ from: dataFrom });
+      .mockReturnValueOnce({ from: dataFrom })
+      .mockReturnValueOnce({ from: imageFrom });
 
     return { select, countWhere, limit, offset, orderBy };
   }
@@ -92,5 +99,22 @@ describe('SearchRecipesHandler', () => {
     expect(compiled.params).toEqual(
       expect.arrayContaining([false, 'Published', 'pho:* & bo:*', row.categoryId, 'Medium', 150, 2]),
     );
+  });
+
+  it('trả ảnh chính cho kết quả tìm kiếm và ưu tiên ảnh medium', async () => {
+    const db = buildDb(1, [row], [
+      { recipeId: row.id, mediumUrl: 'https://cdn.test/medium.webp', originalUrl: 'https://cdn.test/original.jpg' },
+      { recipeId: row.id, mediumUrl: null, originalUrl: 'https://cdn.test/other.jpg' },
+    ]);
+    const handler = new SearchRecipesHandler(db as never);
+
+    const result = await handler.execute(new SearchRecipesQuery({
+      q: 'phở bò',
+      page: 1,
+      pageSize: 12,
+      sort: 'relevance',
+    }));
+
+    expect(result.items[0]?.coverImageUrl).toBe('https://cdn.test/medium.webp');
   });
 });

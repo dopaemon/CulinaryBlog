@@ -3,6 +3,18 @@
 # Chạy full stack đóng container kiểu production (build backend/frontend/nginx) thì thêm overlay
 # docker-compose.prod.yml: `pnpm docker:prod:up` (xem package.json / README).
 services:
+  seq:
+    image: datalust/seq:2026.1
+    profiles: [observability]
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: ${SEQ_ACCEPT_EULA:-N}
+      SEQ_FIRSTRUN_NOAUTHENTICATION: 'true'
+    ports:
+      - '127.0.0.1:5341:80'
+    volumes:
+      - seq-data:/data
+
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -68,6 +80,7 @@ services:
       retries: 5
 
 volumes:
+  seq-data:
   postgres-data:
   redis-data:
   minio-data:

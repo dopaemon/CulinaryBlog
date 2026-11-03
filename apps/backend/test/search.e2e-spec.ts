@@ -88,9 +88,9 @@ async function removeFixtures(): Promise<void> {
 
 async function createFixtures(): Promise<void> {
   await pool.query(
-    `INSERT INTO users (id, email, display_name, role)
-     VALUES ($1, $2, $3, 'Author')`,
-    [authorId, 'search-fixture-author@example.invalid', 'Search Fixture Author'],
+    `INSERT INTO users (id, email, username, display_name, role)
+     VALUES ($1, $2, $3, $4, 'Author')`,
+    [authorId, 'search-fixture-author@example.invalid', 'search_fixture_author', 'Search Fixture Author'],
   );
   await pool.query(
     `INSERT INTO categories (id, name, slug, description)

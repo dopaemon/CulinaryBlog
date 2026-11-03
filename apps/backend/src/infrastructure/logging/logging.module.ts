@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { trace } from '@opentelemetry/api';
 import { LoggerModule } from 'nestjs-pino';
 import type { Request, Response } from 'express';
@@ -34,21 +35,28 @@ export function customLogLevel(req: Request & { startTime?: number }, res: Respo
 
 @Module({
   imports: [
-    LoggerModule.forRoot({
-      pinoHttp: {
-        genReqId,
-        customProps,
-        customLogLevel,
-        transport: {
-          targets: [
-            { target: 'pino/file', options: { destination: 1 } },
-            {
-              target: 'pino-roll',
-              options: { file: join(process.cwd(), 'logs', 'app'), frequency: 'daily', mkdir: true, extension: 'log' },
-            },
-          ],
+    LoggerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        pinoHttp: {
+          genReqId,
+          customProps,
+          customLogLevel,
+          transport: {
+            targets: [
+              { target: 'pino/file', options: { destination: 1 } },
+              {
+                target: 'pino-roll',
+                options: { file: join(process.cwd(), 'logs', 'app'), frequency: 'daily', mkdir: true, extension: 'log' },
+              },
+              ...(config.get<string>('SEQ_URL')
+                ? [{ target: '@autotelic/pino-seq-transport', options: { serverUrl: config.get<string>('SEQ_URL'), apiKey: config.get<string>('SEQ_API_KEY') } }]
+                : []),
+            ],
+          },
         },
-      },
+      }),
     }),
   ],
 })

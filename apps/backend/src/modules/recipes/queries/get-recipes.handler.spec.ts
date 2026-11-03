@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { UnauthorizedException } from '@nestjs/common';
+import type { SQL } from 'drizzle-orm';
 import { PgDialect } from 'drizzle-orm/pg-core';
 import { CacheService } from '../../../infrastructure/cache/cache.service';
 import {
@@ -18,7 +19,6 @@ describe('GetRecipesHandler', () => {
     title: 'Bánh mì thịt nướng',
     slug: 'banh-mi-thit-nuong',
     excerpt: 'Bánh mì Việt Nam',
-    coverImageUrl: null,
     status: 'Published' as const,
     difficulty: 'Medium' as const,
     prepTimeMinutes: 15,
@@ -44,7 +44,7 @@ describe('GetRecipesHandler', () => {
     sort: '-cookTime' as const,
   };
 
-  function buildDb(totalCount = 13, rows: unknown[] = [row]) {
+  function buildDb(totalCount = 13, rows: unknown[] = [row], images: unknown[] = []) {
     const countWhere = jest.fn().mockResolvedValue([{ totalCount }]);
     const countFrom = jest.fn().mockReturnValue({ where: countWhere });
 
@@ -55,12 +55,17 @@ describe('GetRecipesHandler', () => {
     const secondJoin = jest.fn().mockReturnValue({ where: dataWhere });
     const firstJoin = jest.fn().mockReturnValue({ innerJoin: secondJoin });
     const dataFrom = jest.fn().mockReturnValue({ innerJoin: firstJoin });
+
+    const imageOrderBy = jest.fn().mockResolvedValue(images);
+    const imageWhere = jest.fn().mockReturnValue({ orderBy: imageOrderBy });
+    const imageFrom = jest.fn().mockReturnValue({ where: imageWhere });
     const select = jest
       .fn()
       .mockReturnValueOnce({ from: countFrom })
-      .mockReturnValueOnce({ from: dataFrom });
+      .mockReturnValueOnce({ from: dataFrom })
+      .mockReturnValueOnce({ from: imageFrom });
 
-    return { select, countWhere, limit, offset };
+    return { select, countWhere, limit, offset, imageWhere, imageOrderBy };
   }
 
   function buildCache(cached: unknown = null) {
@@ -114,6 +119,7 @@ describe('GetRecipesHandler', () => {
         expect.objectContaining({
           id: row.id,
           title: row.title,
+          coverImageUrl: null,
           category: {
             id: row.categoryId,
             name: row.categoryName,
@@ -143,6 +149,50 @@ describe('GetRecipesHandler', () => {
     );
   });
 
+  it('lấy ảnh chính cho công thức trong trang hiện tại và dùng ảnh gốc khi chưa resize', async () => {
+    const secondId = '717a72bb-a9a5-46f3-9b6a-9438f23bb997';
+    const db = buildDb(
+      2,
+      [row, { ...row, id: secondId, slug: 'mon-thu-hai' }],
+      [
+        {
+          recipeId: row.id,
+          mediumUrl: 'https://cdn.test/primary-medium.webp',
+          originalUrl: 'https://cdn.test/primary.jpg',
+        },
+        {
+          recipeId: row.id,
+          mediumUrl: 'https://cdn.test/other-medium.webp',
+          originalUrl: 'https://cdn.test/other.jpg',
+        },
+        {
+          recipeId: secondId,
+          mediumUrl: null,
+          originalUrl: 'https://cdn.test/second-original.jpg',
+        },
+      ],
+    );
+    const handler = new GetRecipesHandler(db as never, buildCache());
+
+    const result = await handler.execute(
+      new GetRecipesQuery({ page: 1, pageSize: 12, sort: '-createdAt' }),
+    );
+
+    expect(result.items.map((item) => item.coverImageUrl)).toEqual([
+      'https://cdn.test/primary-medium.webp',
+      'https://cdn.test/second-original.jpg',
+    ]);
+    expect(db.select).toHaveBeenCalledTimes(3);
+    const imageFilter = new PgDialect().sqlToQuery(db.imageWhere.mock.calls[0][0]);
+    expect(imageFilter.params).toEqual([row.id, secondId, false]);
+    const imageSort = db.imageOrderBy.mock.calls[0]
+      .map((part: SQL) => new PgDialect().sqlToQuery(part).sql)
+      .join(' ');
+    expect(imageSort).toContain('is_primary" desc');
+    expect(imageSort).toContain('order_index" asc');
+    expect(imageSort).toContain('created_at" asc');
+  });
+
   it('trả danh sách rỗng thay vì 404 khi category không có công thức', async () => {
     const db = buildDb(0, []);
     const handler = new GetRecipesHandler(db as never, buildCache());
@@ -156,6 +206,7 @@ describe('GetRecipesHandler', () => {
       hasNextPage: false,
       hasPreviousPage: false,
     });
+    expect(db.select).toHaveBeenCalledTimes(2);
   });
 
   it.each([

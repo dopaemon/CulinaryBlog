@@ -8,7 +8,7 @@ export const WELCOME_EMAIL_RETRY_DELAYS = [60_000, 300_000, 1_800_000] as const;
 
 export function getWelcomeEmailRetryDelay(attemptsMade: number): number {
   return WELCOME_EMAIL_RETRY_DELAYS[
-    Math.min(Math.max(attemptsMade, 0), WELCOME_EMAIL_RETRY_DELAYS.length - 1)
+    Math.min(Math.max(attemptsMade - 1, 0), WELCOME_EMAIL_RETRY_DELAYS.length - 1)
   ];
 }
 
@@ -34,7 +34,7 @@ export class WelcomeEmailQueue implements OnModuleDestroy {
 
   async enqueue(job: WelcomeEmailJob): Promise<void> {
     await this.queue.add('send-welcome-email', job, {
-      attempts: 3,
+      attempts: 4,
       backoff: { type: 'custom' },
       removeOnComplete: true,
       removeOnFail: false,

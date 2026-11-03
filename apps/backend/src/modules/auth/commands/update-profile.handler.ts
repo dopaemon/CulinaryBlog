@@ -25,16 +25,18 @@ export class UpdateProfileHandler implements ICommandHandler<UpdateProfileComman
       .returning({
         id: users.id,
         email: users.email,
+        username: users.username,
         displayName: users.displayName,
         avatarUrl: users.avatarUrl,
         bio: users.bio,
         role: users.role,
+        createdAt: users.createdAt,
       });
 
     // Guard đã chặn token invalid; tới đây mà không còn user = vừa bị xoá giữa 2 truy vấn.
     if (!user) throw new UnauthorizedException();
 
-    const { role, ...profile } = user;
-    return { ...profile, roles: [role] };
+    const { role, createdAt, ...profile } = user;
+    return { ...profile, roles: [role], createdAt: createdAt.toISOString() };
   }
 }

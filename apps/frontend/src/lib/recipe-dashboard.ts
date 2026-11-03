@@ -58,8 +58,8 @@ export function recipeDashboardErrorMessage(error: unknown): string {
 
 const actionsByStatus: Record<RecipeStatus, RecipeDashboardAction[]> = {
   Draft: ['publish', 'edit', 'view', 'delete'],
-  Published: ['unpublish', 'archive', 'view', 'delete'],
-  Archived: ['view', 'delete'],
+  Published: ['unpublish', 'archive', 'edit', 'view', 'delete'],
+  Archived: ['edit', 'view', 'delete'],
 };
 
 export function getRecipeDashboardActions(

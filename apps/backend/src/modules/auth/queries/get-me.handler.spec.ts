@@ -17,10 +17,12 @@ describe('GetMeHandler', () => {
       {
         id: 'user-1',
         email: 'a@b.com',
+        username: 'user_a',
         displayName: 'Người dùng A',
         avatarUrl: null,
         bio: 'xin chào',
         role: 'Author',
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
       },
     ]);
 
@@ -29,19 +31,23 @@ describe('GetMeHandler', () => {
     expect(result).toEqual({
       id: 'user-1',
       email: 'a@b.com',
+      username: 'user_a',
       displayName: 'Người dùng A',
       avatarUrl: null,
       bio: 'xin chào',
       roles: ['Author'],
+      createdAt: '2026-01-01T00:00:00.000Z',
     });
     // Projection gửi xuống DB không được chứa cột nhạy cảm.
     expect(Object.keys(db.select.mock.calls[0][0])).toEqual([
       'id',
       'email',
+      'username',
       'displayName',
       'avatarUrl',
       'bio',
       'role',
+      'createdAt',
     ]);
   });
 

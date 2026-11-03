@@ -58,10 +58,11 @@ describe('recipe dashboard requirements', () => {
     expect(getRecipeDashboardActions('Published')).toEqual([
       'unpublish',
       'archive',
+      'edit',
       'view',
       'delete',
     ]);
-    expect(getRecipeDashboardActions('Archived')).toEqual(['view', 'delete']);
+    expect(getRecipeDashboardActions('Archived')).toEqual(['edit', 'view', 'delete']);
   });
 
   it('calls the delete action only after confirmation', () => {

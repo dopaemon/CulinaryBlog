@@ -1,6 +1,10 @@
 import { IsEmail, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 
 export class RegisterDto {
+  @IsString()
+  @Matches(/^[a-z][a-z0-9_]{2,29}$/, { message: 'username phải có 3-30 ký tự, bắt đầu bằng chữ thường và chỉ gồm chữ thường, số hoặc _' })
+  username!: string;
+
   @IsEmail()
   email!: string;
 

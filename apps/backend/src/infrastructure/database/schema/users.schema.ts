@@ -6,6 +6,7 @@ export const userRoleEnum = pgEnum('user_role', ['Author', 'Admin']);
 export const users = pgTable('users', {
   ...baseColumns,
   email: varchar('email', { length: 255 }).notNull().unique(),
+  username: varchar('username', { length: 30 }).notNull().unique(),
   // Nullable: user đăng nhập qua Google OAuth có thể không có mật khẩu (FR-AUTH-003).
   passwordHash: text('password_hash'),
   displayName: varchar('display_name', { length: 100 }).notNull(),

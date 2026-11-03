@@ -28,7 +28,7 @@ export class RecipeImageResizeQueue implements OnModuleDestroy {
   async enqueue(job: RecipeImageResizeJob): Promise<void> {
     await this.queue.add('resize-recipe-image', job, {
       jobId: job.imageId,
-      attempts: 3,
+      attempts: 4,
       backoff: { type: 'exponential', delay: 1_000 },
       removeOnComplete: true,
       removeOnFail: false,
